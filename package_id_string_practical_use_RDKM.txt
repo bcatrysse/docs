@@ -63,6 +63,12 @@ changing string to one that adds _MAJOR_VERSION_number suffix means
 "id": "com.rdkcentral.base_0" , suffix _0 because "0" "version": "0.4.0",
 "id": "com.rdkcentral.base_1",  for one with "version": "1.4.0" or "1.4.0.2",
 
+--------------------------------------------
+alternative 
+use   "id": "com.rdkcentral.base.devY for version : "0.Y.Z"  as long as we are version at major versio of 0 version < 1.0.0
+reserve  "id": "com.rdkcentral.base for version: "1.X.Z"
+use  "id": "com.rdkcentral.base-2 if ever version: "2.X.Z"
+
 ------------------------------------
 A runtime upgrade to new version with same Major but higher Minor and Patch version is expected to be backward compatible. 
 When we upgrade a runtime to such new compatible version, we don't want to be forced to upgrade upper applications that use it as depedency.
