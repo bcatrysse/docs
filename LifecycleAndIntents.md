@@ -32,11 +32,11 @@ Use the following APIs for Lifecycle 2.0 onboarding:
 
 A native app starts in `initializing`. It remains there until it subscribes to `Lifecycle.onStateChanged`. Treat that subscription as the lifecycle handshake with the platform.
 
-During cold launch or preload:
+During cold launch or pre-load:
 
 1. Read and use the environment variables provided by the AppContainer to initialize and configure your application. While in `initializing` state you can load resources such as code libraries and data files locally and via network but you **MAY NOT yet allocate an EGL surface, GPU resources or an active AV session via Rialto**. 
 2. Load the `firebolt-cpp-client` library and connect ASAP to the endpoint specified by `FIREBOLT_ENDPOINT` env var. `Firebolt::IFireboltAccessor::Instance().Connect(...)` Upon successfull connection you can now talk with Firebolt AppGateway by using the Firebolt api
-3. Start with calling Firebolt `Actions.intent()` api and store its value and the returned `intentId` as the last received ID. The possible Intents values and their meaning are defined in [Intents Spec](https://wiki.rdkcentral.com/spaces/WG/pages/507518406/Firebolt+9+Intents+Specification). If the intent value is `preload`, it is a strong indication, though not an absolute guarantee, that the platform will soon transition the app to the `suspended` state (through the in step 6 upcoming onStateChanged event). If the intent value is neither preload nor absent, the platform likely intends to launch the application on the screen rather than preload it, though no guarantee. To help accelerate startup, we recommend using this opportunity to begin **loading the data resources required for the initial splash screen** or first minimal UI presented by the application. Note that rendering the splash screen is not yet permitted in this lifecycle state; only the loading of data resources in preparation for rendering is allowed.
+3. Start with calling Firebolt `Actions.intent()` api and store its value and the returned `intentId` as the last received ID. The possible Intents values and their meaning are defined in [Intents Spec](https://wiki.rdkcentral.com/spaces/WG/pages/507518406/Firebolt+9+Intents+Specification). If the intent value is `pre-load`, it is a strong indication, though not an absolute guarantee, that the platform will soon transition the app to the `suspended` state (through the in step 6 upcoming onStateChanged event). If the intent value is neither pre-load nor absent, the platform likely intends to launch the application on the screen rather than pre-load it, though no guarantee. To help accelerate startup, we recommend using this opportunity to begin **loading the data resources required for the initial splash screen** or first minimal UI presented by the application. Note that rendering the splash screen is not yet permitted in this lifecycle state; only the loading of data resources in preparation for rendering is allowed.
 Some intents represent **deep-links** to a specific view, section, or entity within the app. If available at this early stage in the startup flow, such deep-link type of intent is an indication, though no guarantee, that platform aims or intends to launch this app to the screen (with the particular deep-link view). In the usual - good case - app launch flow from cold startup to the screen, the lifecycle states following initializing are `paused` and subsequently `active`, typically occurring in quick succession. As an application developer, you are expected to realize the full requested intent as quickly as possible throughout these states, while respecting the constraints imposed by their resource contracts. To help accelerate intent fulfillment, the intent data provided during this early initialization phase can already be used to load, or prioritize the loading of, the relevant data resources for the specific screen(s).
 4. Subscribe to `Actions.onIntent` and and route newly received intents through the same intent handler. Different intents may be received throughout the lifetime of the application, including while the application remains in the same lifecycle state. As App you need to get notified of such a intent change, so you can adapt accordingly and quickly (without needing to poll). An intent with an incremented ID invalidates the previous intent. While it is rather uncommon for the intent to change during the application's cold-start-to-screen flow, it is possible, and applications should be prepared to handle this scenario. 
 5. Subscribe to `Lifecycle.onStateChanged`. For the platform, this subscription serves as the lifecycle handshake with the application.
@@ -53,7 +53,7 @@ sequenceDiagram
 	A->>P: Actions.intent()
 	P-->>A: intentId + intent
 	A->>A: Store lastIntentId
-	A->>A: if intent is NOT preload, begin loading data for 1st minimal screen (eg splash)
+	A->>A: if intent is NOT pre-load, begin loading data for 1st minimal screen (eg splash)
 	A->>P: Subscribe Actions.onIntent
 	A->>P: Subscribe Lifecycle.onStateChanged
 	P-->>A: initializing to paused or suspended
@@ -61,7 +61,7 @@ sequenceDiagram
 ```
 
 > [!TIP]
-> Keep startup callback wiring independent of the graphics surface. A direct-to-suspended preload must be able to complete without creating that surface.
+> Keep startup callback wiring independent of the graphics surface. A direct-to-suspended pre-load must be able to complete without creating that surface.
 
 ---
 
@@ -132,7 +132,7 @@ However, the container configuration may impose resource limits, including a max
 
 ### `initializing` to `suspended`
 
-This transition is used for supported direct-to-suspended preloads. Ensure the app remains lightweight, also when in steady suspended state
+This transition is used for supported direct-to-suspended pre-loads. Ensure the app remains lightweight, also when in steady suspended state
 
 - The transition is upon `Lifecycle.onStateChanged` event with payload "newState":"suspended", "oldState":"initializing" 
 - Do not create a Wayland/EGL surface
@@ -144,7 +144,7 @@ This transition is used for supported direct-to-suspended preloads. Ensure the a
 - The Application continues to maintain an active connection to the Firebolt App Gateway.
 - In general, the application should remain in a balanced operational state whereby above mentioned resources are unavailable or constrained, while still being able to resume to full functionality significantly faster than a cold launch when requested by the platform. Load only required code libraries, relevant data and application state necessary for such operation.
 - That same operational state should allow the application to be hibernated and successfully restore from hibernation upon platform request.
-- Process new intents as they arrive. If an intent is received with a value other than preload, the platform likely intends to resume the preloaded application to bring it to the screen, although this is not guaranteed. In this case, the application may prepare and load the data resources required for the splash and intent screens, but it must not render them or consume GPU resources until it receives an onStateChange event indicating the paused state.
+- Process new intents as they arrive. If an intent is received with a value other than pre-load, the platform likely intends to resume the pre-loaded application to bring it to the screen, although this is not guaranteed. In this case, the application may prepare and load the data resources required for the splash and intent screens, but it must not render them or consume GPU resources until it receives an onStateChange event indicating the paused state.
   
 ### `active` to `paused`
 
@@ -171,7 +171,7 @@ The app is no longer visible:
 - The Application continues to maintain an active connection to the Firebolt App Gateway.
 - In general, the Application should remain in a balanced operational state whereby above mentioned resources are unavailable or constrained, while still being able to resume to full functionality significantly faster than a cold launch when requested by the platform. Load only required code libraries, relevant data and application state necessary for such operation.
 - That same operational state should allow the application to be hibernated and successfully restore from hibernation upon platform request.
-- Process new intents as they arrive. If an intent is received with a value other than preload, the platform likely intends to resume the preloaded application to bring it to the screen, although this is not guaranteed. In this case, the application may prepare and load the data resources required for the splash and intent screens, but it must not render them or consume GPU resources until it receives an onStateChange event indicating the paused state.
+- Process new intents as they arrive. If an intent is received with a value other than pre-load, the platform likely intends to resume the pre-loaded application to bring it to the screen, although this is not guaranteed. In this case, the application may prepare and load the data resources required for the splash and intent screens, but it must not render them or consume GPU resources until it receives an onStateChange event indicating the paused state.
 
 > [!NOTE]
 > In `suspended`, the platform may limit CPU scheduling and network bandwidth, and the app must operate with a reduced memory footprint. Timers, callbacks, and network operations may therefore complete more slowly or less predictably. Do not rely on long-running or timing-sensitive work in this state, and make recovery operations safe to retry.
@@ -263,7 +263,7 @@ flowchart TD
 	A[Intent getter or onIntent callback] --> B{intentId greater than lastIntentId?}
 	B -- No --> C[Ignore duplicate or stale intent]
 	B -- Yes --> D[Store intentId]
-	D --> E{Action is preload?}
+	D --> E{Action is pre-load?}
 	E -- Yes --> F[Load code and essential state only]
 	E -- No --> G[Validate and route intent]
 	G --> H{Lifecycle permits rendering?}
@@ -275,7 +275,7 @@ flowchart TD
 
 Validate the action and its required payload before changing app state. At minimum, handle the lifecycle-specific actions explicitly:
 
-- `preload`: load code and essential state with the smallest possible resource footprint
+- `pre-load`: load code and essential state with the smallest possible resource footprint
 - `launch`: preserve the previous UX unless a more specific destination is supplied
 - `home`: prepare the app's home experience
 
@@ -308,7 +308,7 @@ After calling `Lifecycle.close`, continue responding to lifecycle notifications 
 - Keep graphics and AV allocation aligned with the current lifecycle state
 - Re-read `Actions.intent()` after returning to `paused` and when becoming `active`
 - Ignore stale or duplicate intent IDs
-- Treat `preload` as code and essential-state preparation, not full rendering
+- Treat `pre-load` as code and essential-state preparation, not full rendering
 - Release EGL, GPU, AV, and excess memory before remaining suspended
 - Use `Lifecycle.close(type)` instead of exiting the process directly
 - Attempt terminating cleanup synchronously in priority order; no cleanup window is guaranteed
@@ -319,8 +319,8 @@ After calling `Lifecycle.close`, continue responding to lifecycle notifications 
 
 When Lifecycle 2.0 and intents are wired correctly:
 
-- Cold launches and preloads follow the platform-selected initial state
-- The app never creates a graphics surface during direct-to-suspended preload
+- Cold launches and pre-loads follow the platform-selected initial state
+- The app never creates a graphics surface during direct-to-suspended pre-load
 - Hot and resumed launches display the destination from the newest intent
 - Duplicate getter and event delivery never causes duplicate navigation
 - Deactivation stops foreground work and AV without discarding hot-launch state
